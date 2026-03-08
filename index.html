@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Family Tree</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f5efe8;color:#333;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+/* Header */
+#header{background:#fff;border-bottom:2px solid #d0c4b4;padding:7px 18px;display:flex;align-items:center;gap:14px;z-index:10;box-shadow:0 1px 4px rgba(0,0,0,.08);}
+#header h1{font-size:1.45rem;color:#8b0000;font-style:italic;font-weight:800;letter-spacing:-0.5px;margin-right:8px;}
+#header h1 span{color:#4a4a8a;}
+
+/* Main */
+#main{display:flex;flex:1;overflow:hidden;}
+
+/* Sidebar */
+#sidebar{width:295px;min-width:270px;background:#e8ddd2;border-right:1px solid #b0a090;display:flex;flex-direction:column;overflow:hidden;}
+#sidebar-title{background:#d0c4b4;padding:9px 12px;font-size:.88rem;color:#444;text-align:center;font-weight:700;letter-spacing:.2px;}
+#sidebar-tabs{display:flex;border-bottom:1px solid #b0a090;}
+.stab{flex:1;padding:7px 2px;text-align:center;cursor:pointer;font-size:.81rem;color:#4a4a8a;background:#d5c9b9;border:none;border-right:1px solid #b0a090;transition:background .12s;font-weight:600;}
+.stab:last-child{border-right:none;}
+.stab.active{background:#e8ddd2;color:#222;}
+#sidebar-content{flex:1;padding:11px 10px;overflow-y:auto;}
+.form-row{display:flex;align-items:center;margin-bottom:7px;gap:5px;}
+.form-row label{min-width:108px;font-size:.8rem;text-align:right;color:#444;}
+.form-row input,.form-row select{flex:1;padding:4px 6px;border:1px solid #b0a090;border-radius:3px;font-size:.8rem;background:#fff;}
+.radio-group{display:flex;gap:8px;font-size:.8rem;}
+.radio-group label{min-width:0;text-align:left;}
+.hint{font-size:.76rem;color:#777;text-align:center;margin:7px 0;}
+#sidebar-btns{display:flex;gap:7px;padding:9px 10px;border-top:1px solid #b0a090;}
+.btn{padding:5px 13px;border:1px solid #999;border-radius:4px;cursor:pointer;font-size:.8rem;background:#e0d5c8;color:#333;transition:background .12s;}
+.btn:hover{background:#c8bcac;}
+.btn-primary{background:#4a4a8a;color:#fff;border-color:#3a3a7a;}
+.btn-primary:hover{background:#3a3a7a;}
+.btn-danger{background:#8b0000;color:#fff;border-color:#6b0000;}
+.btn-danger:hover{background:#6b0000;}
+
+/* Relationship panel */
+#rel-panel{padding:9px 10px;border-top:1px solid #b0a090;max-height:180px;overflow-y:auto;}
+#rel-panel h4{font-size:.8rem;color:#4a4a8a;margin-bottom:5px;font-weight:700;}
+.rel-item{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid #d0c4b4;font-size:.78rem;color:#444;}
+.rel-del{cursor:pointer;color:#8b0000;font-weight:700;padding:0 5px;font-size:.9rem;}
+
+/* Canvas */
+#canvas-wrap{flex:1;position:relative;overflow:hidden;background:#f8f2ec;}
+#tree-canvas{position:absolute;top:0;left:0;}
+
+/* Toolbar */
+#toolbar{background:#e8ddd2;border-top:1px solid #b0a090;padding:5px 16px;display:flex;align-items:center;gap:14px;font-size:.8rem;color:#555;}
+#toolbar button{background:none;border:none;cursor:pointer;color:#4a4a8a;font-size:.8rem;padding:2px 7px;border-radius:3px;}
+#toolbar button:hover{background:#d0c4b4;}
+#zoom-slider{width:90px;accent-color:#4a4a8a;}
+
+/* Modals */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:200;align-items:center;justify-content:center;}
+.modal-bg.open{display:flex;}
+.modal-box{background:#e8ddd2;border:1px solid #b0a090;border-radius:7px;padding:20px 22px;min-width:310px;max-width:92vw;box-shadow:0 4px 24px rgba(0,0,0,.18);}
+.modal-box h3{margin-bottom:13px;color:#4a4a8a;font-size:.98rem;font-weight:700;}
+.modal-btns{display:flex;gap:8px;margin-top:13px;justify-content:flex-end;}
+
+/* Legend */
+#legend{display:flex;gap:14px;font-size:.73rem;color:#666;align-items:center;}
+.leg{display:flex;align-items:center;gap:4px;}
+.leg-line{width:22px;height:2px;display:inline-block;border-radius:1px;}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>Family <span>Tree</span></h1>
+  <button class="btn btn-primary" onclick="openAddModal()">+ Add Person</button>
+  <button class="btn" onclick="openRelModal()">+ Relationship</button>
+  <div style="flex:1"></div>
+  <div id="legend">
+    <div class="leg"><span class="leg-line" style="background:#6b8a6b;border-top:2px dashed #6b8a6b;height:0"></span>Parent</div>
+    <div class="leg"><span class="leg-line" style="background:#8b0000"></span>Spouse</div>
+    <div class="leg"><span class="leg-line" style="background:#4a4a8a;border-top:2px dashed #4a4a8a;height:0"></span>Sibling</div>
+  </div>
+</div>
+
+<div id="main">
+  <div id="sidebar">
+    <div id="sidebar-title">Select a person</div>
+    <div id="sidebar-tabs">
+      <button class="stab active" onclick="switchTab('personal')">Personal</button>
+      <button class="stab" onclick="switchTab('contact')">Contact</button>
+    </div>
+    <div id="sidebar-content">
+      <div id="tab-personal">
+        <div class="form-row"><label>Given names:</label><input id="f-given" type="text"/></div>
+        <div class="form-row"><label>Surname now:</label><input id="f-surname" type="text"/></div>
+        <div class="form-row"><label>Surname at birth:</label><input id="f-surnameb" type="text"/></div>
+        <div class="form-row">
+          <label>Gender:</label>
+          <div class="radio-group">
+            <label><input type="radio" name="sgender" value="Female"/> Female</label>
+            <label><input type="radio" name="sgender" value="Male"/> Male</label>
+            <label><input type="radio" name="sgender" value="Other" checked/> Other</label>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Birth date:</label>
+          <select id="f-bday" style="width:52px"><option value=""></option></select>
+          <select id="f-bmonth" style="width:76px">
+            <option value=""></option>
+            <option>Jan</option><option>Feb</option><option>Mar</option><option>Apr</option>
+            <option>May</option><option>Jun</option><option>Jul</option><option>Aug</option>
+            <option>Sep</option><option>Oct</option><option>Nov</option><option>Dec</option>
+          </select>
+          <input id="f-byear" type="number" style="width:62px" placeholder="Year"/>
+        </div>
+        <div class="form-row">
+          <label></label>
+          <label style="min-width:0"><input type="checkbox" id="f-living" checked/> Living</label>
+        </div>
+        <div class="hint">You can add or change details later.</div>
+      </div>
+      <div id="tab-contact" style="display:none">
+        <div class="form-row"><label>Email:</label><input id="f-email" type="email"/></div>
+        <div class="form-row"><label>Phone:</label><input id="f-phone" type="tel"/></div>
+        <div class="form-row"><label>Notes:</label><input id="f-notes" type="text"/></div>
+      </div>
+    </div>
+    <div id="sidebar-btns" style="display:none">
+      <button class="btn btn-primary" onclick="saveSelected()">Save</button>
+      <button class="btn btn-danger" onclick="deleteSelected()">Delete</button>
+      <button class="btn" onclick="deselectAll()">Cancel</button>
+    </div>
+    <div id="rel-panel" style="display:none">
+      <h4>Relationships</h4>
+      <div id="rel-list"></div>
+    </div>
+  </div>
+
+  <div id="canvas-wrap">
+    <canvas id="tree-canvas"></canvas>
+  </div>
+</div>
+
+<div id="toolbar">
+  <button onclick="resetView()">&#8810; Centre</button>
+  &minus;
+  <input type="range" id="zoom-slider" min="25" max="220" value="100" oninput="setZoom(this.value)"/>
+  +
+  <span id="zoom-label">100%</span>
+  &nbsp;|&nbsp;
+  <span id="person-count">0 people</span>
+</div>
+
+<!-- Add Person Modal -->
+<div class="modal-bg" id="add-modal">
+  <div class="modal-box">
+    <h3>Add Person</h3>
+    <div class="form-row"><label>Given names:</label><input id="m-given" type="text"/></div>
+    <div class="form-row"><label>Surname now:</label><input id="m-surname" type="text"/></div>
+    <div class="form-row"><label>Surname at birth:</label><input id="m-surnameb" type="text"/></div>
+    <div class="form-row">
+      <label>Gender:</label>
+      <div class="radio-group">
+        <label><input type="radio" name="mgender" value="Female"/> Female</label>
+        <label><input type="radio" name="mgender" value="Male"/> Male</label>
+        <label><input type="radio" name="mgender" value="Other" checked/> Other</label>
+      </div>
+    </div>
+    <div class="form-row"><label>Birth year:</label><input id="m-byear" type="number" style="width:80px" placeholder="e.g. 1985"/></div>
+    <div class="form-row"><label></label><label><input type="checkbox" id="m-living" checked/> This person is living</label></div>
+    <div class="hint">You can add or change details later.</div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="submitAddModal()">OK</button>
+      <button class="btn" onclick="closeAddModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Relationship Modal -->
+<div class="modal-bg" id="rel-modal">
+  <div class="modal-box">
+    <h3>Add Relationship</h3>
+    <div class="form-row"><label>Person 1:</label><select id="rel-p1" style="flex:1"></select></div>
+    <div class="form-row">
+      <label>is&hellip;</label>
+      <select id="rel-type" style="flex:1">
+        <option value="parent">parent of</option>
+        <option value="spouse">spouse of</option>
+        <option value="sibling">sibling of</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Person 2:</label><select id="rel-p2" style="flex:1"></select></div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="submitRelModal()">Add</button>
+      <button class="btn" onclick="closeRelModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Storage ─────────────────────────────────────────────
+const STORE = 'familyTreeData';
+function loadData() {
+  try { return JSON.parse(localStorage.getItem(STORE)) || { members:[], relationships:[] }; } catch { return { members:[], relationships:[] }; }
+}
+function saveData() { localStorage.setItem(STORE, JSON.stringify({ members, relationships })); }
+
+let { members, relationships } = loadData();
+
+// ── Canvas state ────────────────────────────────────────
+const canvas = document.getElementById('tree-canvas');
+const ctx = canvas.getContext('2d');
+let scale = 1, offsetX = 0, offsetY = 0;
+let selectedId = null, hoveredId = null;
+let panDrag = false, panSX, panSY;
+let nodeDrag = false, nodeDragId, nodeDragOX, nodeDragOY;
+
+// ── Resize ───────────────────────────────────────────────
+function resizeCanvas() {
+  const w = document.getElementById('canvas-wrap');
+  canvas.width = w.clientWidth;
+  canvas.height = w.clientHeight;
+  render();
+}
+window.addEventListener('resize', resizeCanvas);
+
+// ── Render ───────────────────────────────────────────────
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.translate(offsetX, offsetY);
+  ctx.scale(scale, scale);
+  drawRelationships();
+  members.forEach(drawNode);
+  ctx.restore();
+}
+
+function drawRelationships() {
+  relationships.forEach(r => {
+    const p1 = members.find(m => m.id === r.person1Id);
+    const p2 = members.find(m => m.id === r.person2Id);
+    if (!p1 || !p2) return;
+    const color = r.type === 'spouse' ? '#8b0000' : r.type === 'sibling' ? '#4a4a8a' : '#6b8a6b';
+    const dashed = r.type !== 'spouse';
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    if (dashed) ctx.setLineDash([7, 4]);
+    ctx.beginPath();
+    const x1 = p1.x + 62, y1 = p1.y + 30;
+    const x2 = p2.x + 62, y2 = p2.y + 30;
+    const mx = (x1 + x2) / 2;
+    ctx.moveTo(x1, y1);
+    ctx.bezierCurveTo(mx, y1, mx, y2, x2, y2);
+    ctx.stroke();
+    ctx.restore();
+  });
+}
+
+function drawNode(m) {
+  const W = 124, H = 58, R = 8;
+  const { x, y } = m;
+  const isSel = m.id === selectedId;
+  const isHov = m.id === hoveredId;
+
+  // Shadow
+  ctx.save();
+  if (isSel) { ctx.shadowColor = '#4a4a8a'; ctx.shadowBlur = 14; }
+  else if (isHov) { ctx.shadowColor = '#8b7050'; ctx.shadowBlur = 8; }
+
+  // Card
+  ctx.beginPath(); rrect(x, y, W, H, R);
+  ctx.fillStyle = isSel ? '#dddaf5' : '#fff';
+  ctx.fill();
+  ctx.strokeStyle = isSel ? '#4a4a8a' : '#8b7050';
+  ctx.lineWidth = isSel ? 2.5 : 1.5;
+  ctx.stroke();
+  ctx.restore();
+
+  // Gender stripe
+  const gc = m.gender === 'Male' ? '#4a6aaa' : m.gender === 'Female' ? '#b05070' : '#888';
+  ctx.save();
+  ctx.beginPath(); rrect(x, y, W, 7, [R,R,0,0]);
+  ctx.fillStyle = gc; ctx.fill();
+  ctx.restore();
+
+  // Name
+  const name = ((m.givenNames||'') + ' ' + (m.surnameNow||'')).trim() || 'Unknown';
+  ctx.save();
+  ctx.font = 'bold 13px "Segoe UI",Arial,sans-serif';
+  ctx.fillStyle = '#111';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(clip(name,15), x + W/2, y + H/2 - 5);
+  if (m.birthYear) {
+    ctx.font = '11px "Segoe UI",Arial,sans-serif';
+    ctx.fillStyle = '#666';
+    ctx.fillText(m.birthYear + (m.isLiving ? '' : ' †'), x + W/2, y + H/2 + 11);
+  }
+  ctx.restore();
+
+  // + quick-add dots (show on hover/select)
+  if (isSel || isHov) {
+    [[W/2, -14, 't'],[W/2, H+6,'b'],[-14, H/2,'l'],[W+6, H/2,'r']].forEach(([dx,dy]) => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x+dx, y+dy, 8, 0, Math.PI*2);
+      ctx.fillStyle = '#4a4a8a';
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 13px Arial';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('+', x+dx, y+dy+1);
+      ctx.restore();
+    });
+  }
+}
+
+function rrect(x, y, w, h, r) {
+  if (!Array.isArray(r)) r = [r,r,r,r];
+  const [tl,tr,br,bl] = r;
+  ctx.moveTo(x+tl, y);
+  ctx.lineTo(x+w-tr, y); ctx.arcTo(x+w,y, x+w,y+tr, tr);
+  ctx.lineTo(x+w, y+h-br); ctx.arcTo(x+w,y+h, x+w-br,y+h, br);
+  ctx.lineTo(x+bl, y+h); ctx.arcTo(x,y+h, x,y+h-bl, bl);
+  ctx.lineTo(x, y+tl); ctx.arcTo(x,y, x+tl,y, tl);
+  ctx.closePath();
+}
+
+function clip(s, n) { return s.length > n ? s.slice(0,n-1)+'…' : s; }
+
+// ── Mouse ────────────────────────────────────────────────
+function worldXY(e) {
+  const r = canvas.getBoundingClientRect();
+  return { wx: (e.clientX - r.left - offsetX)/scale, wy: (e.clientY - r.top - offsetY)/scale };
+}
+function hitTest(wx, wy) {
+  for (let i = members.length-1; i >= 0; i--) {
+    const m = members[i];
+    if (wx >= m.x && wx <= m.x+124 && wy >= m.y && wy <= m.y+58) return m;
+  }
+  return null;
+}
+
+canvas.addEventListener('mousedown', e => {
+  const {wx,wy} = worldXY(e);
+  const hit = hitTest(wx,wy);
+  if (hit) {
+    nodeDrag = true; nodeDragId = hit.id;
+    nodeDragOX = wx - hit.x; nodeDragOY = wy - hit.y;
+    selectMember(hit.id);
+  } else {
+    panDrag = true;
+    panSX = e.clientX - offsetX; panSY = e.clientY - offsetY;
+    deselectAll();
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  const {wx,wy} = worldXY(e);
+  if (nodeDrag && nodeDragId) {
+    const m = members.find(x=>x.id===nodeDragId);
+    if (m) { m.x = wx - nodeDragOX; m.y = wy - nodeDragOY; render(); }
+  } else if (panDrag) {
+    offsetX = e.clientX - panSX; offsetY = e.clientY - panSY; render();
+  } else {
+    const hit = hitTest(wx,wy);
+    const nid = hit ? hit.id : null;
+    if (nid !== hoveredId) { hoveredId = nid; canvas.style.cursor = hit ? 'pointer' : 'grab'; render(); }
+  }
+});
+
+canvas.addEventListener('mouseup', () => {
+  if (nodeDrag) saveData();
+  nodeDrag = false; nodeDragId = null; panDrag = false;
+});
+
+canvas.addEventListener('mouseleave', () => { panDrag = false; nodeDrag = false; });
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const r = canvas.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  const d = e.deltaY > 0 ? 0.9 : 1.11;
+  const ns = Math.min(Math.max(scale*d, 0.25), 2.5);
+  offsetX = mx - (mx-offsetX)*(ns/scale);
+  offsetY = my - (my-offsetY)*(ns/scale);
+  scale = ns;
+  document.getElementById('zoom-slider').value = Math.round(scale*100);
+  document.getElementById('zoom-label').textContent = Math.round(scale*100)+'%';
+  render();
+}, {passive:false});
+
+// ── Selection ────────────────────────────────────────────
+function selectMember(id) {
+  selectedId = id;
+  const m = members.find(x=>x.id===id);
+  if (!m) return;
+  document.getElementById('sidebar-title').textContent = ((m.givenNames||'')+' '+(m.surnameNow||'')).trim()||'Unknown';
+  document.getElementById('f-given').value = m.givenNames||'';
+  document.getElementById('f-surname').value = m.surnameNow||'';
+  document.getElementById('f-surnameb').value = m.surnameAtBirth||'';
+  document.querySelectorAll('input[name=sgender]').forEach(r=>r.checked=r.value===m.gender);
+  document.getElementById('f-bday').value = m.birthDay||'';
+  document.getElementById('f-bmonth').value = m.birthMonth||'';
+  document.getElementById('f-byear').value = m.birthYear||'';
+  document.getElementById('f-living').checked = !!m.isLiving;
+  document.getElementById('f-email').value = m.email||'';
+  document.getElementById('f-phone').value = m.phone||'';
+  document.getElementById('f-notes').value = m.notes||'';
+  document.getElementById('sidebar-btns').style.display='flex';
+  document.getElementById('rel-panel').style.display='block';
+  renderRelList(id);
+  render();
+}
+
+function deselectAll() {
+  selectedId = null;
+  document.getElementById('sidebar-title').textContent='Select a person';
+  document.getElementById('sidebar-btns').style.display='none';
+  document.getElementById('rel-panel').style.display='none';
+  render();
+}
+
+function renderRelList(id) {
+  const box = document.getElementById('rel-list');
+  const rels = relationships.filter(r=>r.person1Id===id||r.person2Id===id);
+  if (!rels.length) { box.innerHTML='<i style="color:#999;font-size:.77rem">No relationships yet</i>'; return; }
+  box.innerHTML = rels.map(r=>{
+    const oid = r.person1Id===id ? r.person2Id : r.person1Id;
+    const o = members.find(m=>m.id===oid);
+    const on = o ? (((o.givenNames||'')+' '+(o.surnameNow||'')).trim()||'Unknown') : '?';
+    const lbl = r.type==='parent'?(r.person1Id===id?'parent of':'child of'):r.type==='spouse'?'spouse of':'sibling of';
+    return `<div class="rel-item"><span>${lbl} <b>${on}</b></span><span class="rel-del" onclick="deleteRel('${r.id}')">&#10005;</span></div>`;
+  }).join('');
+}
+
+function saveSelected() {
+  const m = members.find(x=>x.id===selectedId); if(!m) return;
+  m.givenNames = document.getElementById('f-given').value;
+  m.surnameNow = document.getElementById('f-surname').value;
+  m.surnameAtBirth = document.getElementById('f-surnameb').value;
+  m.gender = document.querySelector('input[name=sgender]:checked')?.value||'Other';
+  m.birthDay = document.getElementById('f-bday').value;
+  m.birthMonth = document.getElementById('f-bmonth').value;
+  m.birthYear = document.getElementById('f-byear').value;
+  m.isLiving = document.getElementById('f-living').checked;
+  m.email = document.getElementById('f-email').value;
+  m.phone = document.getElementById('f-phone').value;
+  m.notes = document.getElementById('f-notes').value;
+  saveData();
+  document.getElementById('sidebar-title').textContent = ((m.givenNames||'')+' '+(m.surnameNow||'')).trim()||'Unknown';
+  updateCount(); render();
+}
+
+function deleteSelected() {
+  if (!confirm('Delete this person and all their relationships?')) return;
+  members = members.filter(m=>m.id!==selectedId);
+  relationships = relationships.filter(r=>r.person1Id!==selectedId&&r.person2Id!==selectedId);
+  saveData(); deselectAll(); updateCount(); render();
+}
+
+function deleteRel(id) {
+  relationships = relationships.filter(r=>r.id!==id);
+  saveData(); renderRelList(selectedId); render();
+}
+
+// ── Tab switch ───────────────────────────────────────────
+function switchTab(t) {
+  document.querySelectorAll('.stab').forEach((b,i)=>b.classList.toggle('active',['personal','contact'][i]===t));
+  document.getElementById('tab-personal').style.display = t==='personal'?'':'none';
+  document.getElementById('tab-contact').style.display = t==='contact'?'':'none';
+}
+
+// ── Add Modal ────────────────────────────────────────────
+function openAddModal() {
+  ['m-given','m-surname','m-surnameb','m-byear'].forEach(id=>document.getElementById(id).value='');
+  document.querySelector('input[name=mgender][value=Other]').checked=true;
+  document.getElementById('m-living').checked=true;
+  document.getElementById('add-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('m-given').focus(),60);
+}
+function closeAddModal() { document.getElementById('add-modal').classList.remove('open'); }
+function submitAddModal() {
+  const wrap = document.getElementById('canvas-wrap');
+  const cx = wrap.clientWidth/2, cy = wrap.clientHeight/2;
+  const m = {
+    id: crypto.randomUUID(),
+    givenNames: document.getElementById('m-given').value.trim(),
+    surnameNow: document.getElementById('m-surname').value.trim(),
+    surnameAtBirth: document.getElementById('m-surnameb').value.trim(),
+    gender: document.querySelector('input[name=mgender]:checked')?.value||'Other',
+    birthYear: document.getElementById('m-byear').value||null,
+    isLiving: document.getElementById('m-living').checked,
+    email:'', phone:'', notes:'',
+    x: (cx - offsetX)/scale - 62 + (Math.random()*80-40),
+    y: (cy - offsetY)/scale - 29 + (Math.random()*80-40)
+  };
+  members.push(m);
+  saveData(); closeAddModal(); selectMember(m.id); updateCount(); render();
+}
+
+// ── Relationship Modal ────────────────────────────────────
+function openRelModal() {
+  if (members.length < 2) { alert('Add at least 2 people first.'); return; }
+  const opts = members.map(m=>`<option value="${m.id}">${(((m.givenNames||'')+' '+(m.surnameNow||'')).trim()||'Unknown')}</option>`).join('');
+  document.getElementById('rel-p1').innerHTML = opts;
+  document.getElementById('rel-p2').innerHTML = opts;
+  if (selectedId) document.getElementById('rel-p1').value = selectedId;
+  if (members.length > 1) {
+    const other = members.find(m=>m.id!==document.getElementById('rel-p1').value);
+    if (other) document.getElementById('rel-p2').value = other.id;
+  }
+  document.getElementById('rel-modal').classList.add('open');
+}
+function closeRelModal() { document.getElementById('rel-modal').classList.remove('open'); }
+function submitRelModal() {
+  const p1 = document.getElementById('rel-p1').value;
+  const p2 = document.getElementById('rel-p2').value;
+  const type = document.getElementById('rel-type').value;
+  if (p1 === p2) { alert('Please choose two different people.'); return; }
+  relationships.push({ id: crypto.randomUUID(), person1Id:p1, person2Id:p2, type });
+  saveData();
+  if (selectedId) renderRelList(selectedId);
+  closeRelModal(); render();
+}
+
+// ── Zoom / View ───────────────────────────────────────────
+function setZoom(v) {
+  const wrap = document.getElementById('canvas-wrap');
+  const cx = wrap.clientWidth/2, cy = wrap.clientHeight/2;
+  const ns = v/100;
+  offsetX = cx-(cx-offsetX)*(ns/scale);
+  offsetY = cy-(cy-offsetY)*(ns/scale);
+  scale = ns;
+  document.getElementById('zoom-label').textContent = v+'%';
+  render();
+}
+function resetView() {
+  scale=1; offsetX=0; offsetY=0;
+  document.getElementById('zoom-slider').value=100;
+  document.getElementById('zoom-label').textContent='100%';
+  render();
+}
+function updateCount() {
+  document.getElementById('person-count').textContent = members.length+' person'+(members.length!==1?'s':'');
+}
+
+// ── Init ─────────────────────────────────────────────────
+(function initDayDrop() {
+  const d = document.getElementById('f-bday');
+  for (let i=1;i<=31;i++){const o=document.createElement('option');o.value=i;o.text=i;d.appendChild(o);}
+})();
+
+// Close modals on backdrop click
+['add-modal','rel-modal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
+});
+
+resizeCanvas();
+updateCount();
+</script>
+</body>
+</html>
