@@ -1,0 +1,16 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.log
+*.json.bak
+
+## Build
+publish/
+out/
+
+## OS
+.DS_Store
+Thumbs.db
